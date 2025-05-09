@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mataan</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- Splash Screen -->
+    <div id="splashScreen" class="splash-screen">
+      <div class="splash-logo">Mataan</div>
+    </div>
+
+    <!-- Player Setup Form -->
+    <div id="setupForm" class="setup-form">
+      <h2>Set Up New Game</h2>
+      <div class="form-group">
+        <label for="player1">Player 1 Name:</label>
+        <input type="text" id="player1" placeholder="Enter name" />
+      </div>
+      <div class="form-group">
+        <label for="player2">Player 2 Name:</label>
+        <input type="text" id="player2" placeholder="Enter name" />
+      </div>
+      <div class="form-group">
+        <label for="player3">Player 3 Name:</label>
+        <input type="text" id="player3" placeholder="Enter name" />
+      </div>
+      <div class="form-group">
+        <label for="player4">Player 4 Name:</label>
+        <input type="text" id="player4" placeholder="Enter name" />
+      </div>
+      <div class="form-group">
+        <label for="betAmount">Bet Amount:</label>
+        <input
+          type="number"
+          id="betAmount"
+          placeholder="Enter bet amount per point"
+          min="1"
+          value="1"
+        />
+      </div>
+      <button id="startButton">Start Game</button>
+    </div>
+
+    <!-- Main App -->
+    <div id="appContainer" class="app-container">
+      <!-- Header -->
+      <div class="header">
+        <div></div>
+        <div class="app-title">Mataan</div>
+        <div class="menu-icon" id="menuButton">☰</div>
+        <div class="menu-dropdown" id="menuDropdown">
+          <a href="#" id="addTableBtn">Add Table</a>
+          <a href="#" id="exportBtn">Export Session</a>
+          <a href="#" id="newSessionBtn">New Session</a>
+        </div>
+      </div>
+
+      <!-- Tables Container -->
+      <div id="tablesContainer"></div>
+
+      <!-- Status Bar -->
+      <div class="status-bar" id="statusBar">
+        <table class="status-bar-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Total Score</th>
+              <th>Payment</th>
+            </tr>
+          </thead>
+          <tbody id="statusBarBody">
+            <!-- Will be filled dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="overlay" id="exportOverlay">
+      <div class="export-modal">
+        <h2>Export Session</h2>
+        <div class="export-content" id="exportContent"></div>
+        <div style="display: flex">
+          <button class="copy-btn" id="copyBtn">Copy</button>
+          <button class="close-modal" id="closeExportBtn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
