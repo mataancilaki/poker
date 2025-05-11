@@ -202,6 +202,14 @@ th {
   background-color: #282828;
   color: white;
 }
+.payment-row {
+  font-weight: 500;
+  background-color: #1a1a1a;
+  color: white;
+}
+.payment-row td {
+  padding: 8px;
+}
 .status-bar {
   background-color: rgb(226, 226, 226);
   padding: 15px;
@@ -216,8 +224,12 @@ th {
 .status-bar-table th,
 .status-bar-table td {
   padding: 8px;
-  text-align: center;
+  text-align: left;
   color: blue;
+}
+.status-bar-table .player-name {
+  font-weight: 500;
+  margin-right: 10px;
 }
 .payment-positive {
   color: #2ecc71;

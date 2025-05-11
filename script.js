@@ -115,6 +115,8 @@ let gameState = {
   function renderTable(table, tableIndex) {
     const tableDiv = document.createElement("div");
     tableDiv.className = "table-container";
+    const tablePayments = calculateTablePayments(table);
+    
     tableDiv.innerHTML = `
             <div class="table-header">Table ${tableIndex + 1}</div>
             <table>
@@ -172,6 +174,26 @@ let gameState = {
                           })
                           .join("")}
                     </tr>
+                    <tr class="payment-row">
+                        <td>Payment</td>
+                        ${Array(4)
+                          .fill()
+                          .map((_, playerIndex) => {
+                            const payment = tablePayments[playerIndex];
+                            const paymentClass = payment > 0
+                              ? "payment-positive"
+                              : payment < 0
+                              ? "payment-negative"
+                              : "";
+                            const paymentText = payment > 0
+                              ? `+${payment}`
+                              : payment < 0
+                              ? `${payment}`
+                              : "0";
+                            return `<td class="${paymentClass}">${paymentText}</td>`;
+                          })
+                          .join("")}
+                    </tr>
                 </tbody>
             </table>
         `;
@@ -198,8 +220,9 @@ let gameState = {
       gameState.tables[tableIndex].rounds[roundIndex].scores[playerIndex] =
         value;
 
-      // Update totals
+      // Update totals and payments
       updateTableTotals(tableId);
+      updateTablePayments(tableId);
       updateStatusBar();
 
       // Save state
@@ -220,6 +243,35 @@ let gameState = {
       if (totalElement) {
         totalElement.textContent = total !== null ? total : "-";
       }
+    }
+  }
+
+  // Update table payments
+  function updateTablePayments(tableId) {
+    const table = gameState.tables.find((t) => t.id === tableId);
+    if (!table) return;
+
+    const tablePayments = calculateTablePayments(table);
+    const paymentRow = document.querySelector(`#tableBody${tableId} .payment-row`);
+    
+    if (paymentRow) {
+        const cells = paymentRow.querySelectorAll('td:not(:first-child)');
+        cells.forEach((cell, index) => {
+            const payment = tablePayments[index];
+            const paymentClass = payment > 0
+                ? "payment-positive"
+                : payment < 0
+                ? "payment-negative"
+                : "";
+            const paymentText = payment > 0
+                ? `+${payment}`
+                : payment < 0
+                ? `${payment}`
+                : "0";
+            
+            cell.className = paymentClass;
+            cell.textContent = paymentText;
+        });
     }
   }
 
@@ -257,12 +309,12 @@ let gameState = {
     return hasScore ? grandTotal : null;
   }
 
-  // Calculate payments based on scores
-  function calculatePayments() {
+  // Calculate payments for a single table
+  function calculateTablePayments(table) {
     const scores = gameState.players.map((_, playerIndex) => {
       return {
         player: playerIndex,
-        score: calculatePlayerGrandTotal(playerIndex) || 0,
+        score: calculatePlayerTotal(table, playerIndex) || 0,
       };
     });
 
@@ -272,46 +324,55 @@ let gameState = {
     const payments = Array(4).fill(0);
 
     // 4th pays 1st
-    const payment1 =
-      (scores[3].score - scores[0].score) * gameState.betAmount;
+    const payment1 = (scores[3].score - scores[0].score) * gameState.betAmount;
     payments[scores[3].player] -= payment1;
     payments[scores[0].player] += payment1;
 
     // 3rd pays 2nd
-    const payment2 =
-      (scores[2].score - scores[1].score) * gameState.betAmount;
+    const payment2 = (scores[2].score - scores[1].score) * gameState.betAmount;
     payments[scores[2].player] -= payment2;
     payments[scores[1].player] += payment2;
 
     return payments;
   }
 
+  // Calculate accumulated payments across all tables
+  function calculateAccumulatedPayments() {
+    const accumulatedPayments = Array(4).fill(0);
+    
+    gameState.tables.forEach(table => {
+      const tablePayments = calculateTablePayments(table);
+      tablePayments.forEach((payment, index) => {
+        accumulatedPayments[index] += payment;
+      });
+    });
+
+    return accumulatedPayments;
+  }
+
   // Update status bar
   function updateStatusBar() {
-    const payments = calculatePayments();
+    const accumulatedPayments = calculateAccumulatedPayments();
+    
     statusBarBody.innerHTML = "";
 
     gameState.players.forEach((player, index) => {
-      const total = calculatePlayerGrandTotal(index);
-      const paymentClass =
-        payments[index] > 0
-          ? "payment-positive"
-          : payments[index] < 0
-          ? "payment-negative"
-          : "";
-      const paymentText =
-        payments[index] > 0
-          ? `+${payments[index]}`
-          : payments[index] < 0
-          ? `${payments[index]}`
-          : "0";
+      const accumulatedPaymentClass = accumulatedPayments[index] > 0
+        ? "payment-positive"
+        : accumulatedPayments[index] < 0
+        ? "payment-negative"
+        : "";
+
+      const accumulatedPaymentText = accumulatedPayments[index] > 0
+        ? `+${accumulatedPayments[index]}`
+        : accumulatedPayments[index] < 0
+        ? `${accumulatedPayments[index]}`
+        : "0";
 
       const row = document.createElement("tr");
       row.innerHTML = `
-                <td>${player}</td>
-                <td>${total !== null ? total : "-"}</td>
-                <td class="${paymentClass}">${paymentText}</td>
-            `;
+        <td><span class="player-name">${player}:</span> <span class="${accumulatedPaymentClass}">${accumulatedPaymentText}</span></td>
+      `;
       statusBarBody.appendChild(row);
     });
   }
@@ -345,55 +406,72 @@ let gameState = {
   function exportSession() {
     menuDropdown.style.display = "none";
 
-    let output = `ScoreTracker Session\n`;
+    let output = `Mataan Session\n`;
     output += `Players: ${gameState.players.join(", ")}\n`;
     output += `Bet Amount: ${gameState.betAmount}\n\n`;
 
+    // Table summaries
     gameState.tables.forEach((table, tableIndex) => {
-      output += `=== TABLE ${tableIndex + 1} ===\n`;
+        output += `=== TABLE ${tableIndex + 1} ===\n`;
+        const tablePayments = calculateTablePayments(table);
+        
+        // Get player rankings for this table
+        const scores = gameState.players.map((_, playerIndex) => ({
+            player: playerIndex,
+            score: calculatePlayerTotal(table, playerIndex) || 0,
+        }));
+        scores.sort((a, b) => a.score - b.score);
 
-      // Header row
-      output += `Round | ${gameState.players.join(" | ")}\n`;
-      output += `-----${"|------".repeat(gameState.players.length)}\n`;
-
-      // Data rows
-      table.rounds.forEach((round, roundIndex) => {
-        output += `R${roundIndex + 1} | `;
-        output += round.scores
-          .map((score) => (score !== null ? score : "-"))
-          .join(" | ");
+        // Show payments for this table
+        gameState.players.forEach((player, index) => {
+            const payment = tablePayments[index];
+            const paymentText = payment > 0
+                ? `+${payment}`
+                : payment < 0
+                ? `${payment}`
+                : "0";
+            
+            // Add congratulatory messages
+            let message = "";
+            if (scores[0].player === index) {
+                message = " 🏆 Congratulations!";
+            } else if (scores[3].player === index) {
+                message = " 👎 Boo!";
+            }
+            
+            output += `${player}: ${paymentText}${message}\n`;
+        });
         output += "\n";
-      });
-
-      // Total row
-      output += `-----${"|------".repeat(gameState.players.length)}\n`;
-      output += `Total | `;
-      output += gameState.players
-        .map((_, playerIndex) => {
-          const total = calculatePlayerTotal(table, playerIndex);
-          return total !== null ? total : "-";
-        })
-        .join(" | ");
-      output += "\n\n";
     });
 
-    // Grand total and payments
-    output += `=== SUMMARY ===\n`;
-    output += `Player | Grand Total | Payment\n`;
-    output += `-------|------------|--------\n`;
+    // Grand total and accumulated payments
+    output += `=== FINAL SUMMARY ===\n`;
+    const accumulatedPayments = calculateAccumulatedPayments();
+    
+    // Get final rankings
+    const finalScores = gameState.players.map((_, playerIndex) => ({
+        player: playerIndex,
+        score: calculatePlayerGrandTotal(playerIndex) || 0,
+    }));
+    finalScores.sort((a, b) => a.score - b.score);
 
-    const payments = calculatePayments();
     gameState.players.forEach((player, index) => {
-      const total = calculatePlayerGrandTotal(index);
-      const paymentText =
-        payments[index] > 0
-          ? `+${payments[index]}`
-          : payments[index] < 0
-          ? `${payments[index]}`
-          : "0";
-      output += `${player} | ${
-        total !== null ? total : "-"
-      } | ${paymentText}\n`;
+        const payment = accumulatedPayments[index];
+        const paymentText = payment > 0
+            ? `+${payment}`
+            : payment < 0
+            ? `${payment}`
+            : "0";
+        
+        // Add congratulatory messages for final standings
+        let message = "";
+        if (finalScores[0].player === index) {
+            message = " 🏆";
+        } else if (finalScores[3].player === index) {
+            message = " 👎";
+        }
+        
+        output += `${player}: ${paymentText}${message}\n`;
     });
 
     exportContent.textContent = output;
